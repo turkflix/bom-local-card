@@ -40,6 +40,8 @@ services:
     volumes:
       # Mount HA config directory
       - ./test-ha/config:/config
+      # Mount the integration
+      - ./custom_components/bom_local:/config/custom_components/bom_local
     environment:
       - TZ=Australia/Brisbane
     restart: unless-stopped

@@ -79,7 +79,6 @@ export class BomLocalRadarCard extends LitElement implements LovelaceCard {
       type: 'custom:bom-local-card',
       suburb: 'Pomona',
       state: 'QLD',
-      service_url: 'http://localhost:8082',
     };
   }
 
@@ -146,11 +145,10 @@ export class BomLocalRadarCard extends LitElement implements LovelaceCard {
   }
 
   /**
-   * Fetches radar data from the local service
+   * Fetches radar data from the local service via HA integration
    * Supports both latest frames and historical timeseries
    */
   private async fetchRadarData(): Promise<RadarResponse | null> {
-    const serviceUrl = this._config.service_url || DEFAULT_SERVICE_URL;
     const suburb = encodeURIComponent(this._config.suburb);
     const state = encodeURIComponent(this._config.state);
     const timespan = this._config.timespan || 'latest';
@@ -158,7 +156,7 @@ export class BomLocalRadarCard extends LitElement implements LovelaceCard {
     this.isLoading = true;
 
     const options = {
-      serviceUrl,
+      hass: this.hass,
       suburb,
       state,
       timespan: timespan !== 'latest' ? timespan : undefined,
@@ -529,10 +527,6 @@ export class BomLocalRadarCard extends LitElement implements LovelaceCard {
             oldConfig.timespan !== this._config.timespan ||
             oldConfig.custom_start_time !== this._config.custom_start_time ||
             oldConfig.custom_end_time !== this._config.custom_end_time) {
-          this.fetchRadarData();
-        }
-        // If service URL changed, refetch
-        if (oldConfig.service_url !== this._config.service_url) {
           this.fetchRadarData();
         }
         // If refresh interval changed, restart auto-refresh

@@ -168,13 +168,15 @@ build_with_docker() {
 }
 
 # Build card
+CARD_BUILD_PATH="custom_components/bom_local/www/bom-local-card.js"
+
 if [ "$SKIP_BUILD" = "1" ]; then
     echo "⏭️  Skipping build (--skip-build)"
-    if [ ! -f "dist/bom-local-card.js" ]; then
-        echo "❌ Error: dist/bom-local-card.js not found and --skip-build was used"
+    if [ ! -f "$CARD_BUILD_PATH" ]; then
+        echo "❌ Error: $CARD_BUILD_PATH not found and --skip-build was used"
         exit 1
     fi
-elif [ "$FORCE_BUILD" = "1" ] || [ ! -f "dist/bom-local-card.js" ]; then
+elif [ "$FORCE_BUILD" = "1" ] || [ ! -f "$CARD_BUILD_PATH" ]; then
     # If FORCE_BUILD is set, also force Docker rebuild
     if [ "$FORCE_BUILD" = "1" ] && [ "$USE_DOCKER_BUILD" = "1" ]; then
         export FORCE_REBUILD=1
@@ -192,13 +194,13 @@ elif [ "$FORCE_BUILD" = "1" ] || [ ! -f "dist/bom-local-card.js" ]; then
         fi
     fi
     
-    if [ ! -f "dist/bom-local-card.js" ]; then
-        echo "❌ Error: dist/bom-local-card.js not found after build"
+    if [ ! -f "$CARD_BUILD_PATH" ]; then
+        echo "❌ Error: $CARD_BUILD_PATH not found after build"
         exit 1
     fi
     
     # Verify build quality
-    FILE_SIZE=$(stat -f%z "dist/bom-local-card.js" 2>/dev/null || stat -c%s "dist/bom-local-card.js" 2>/dev/null || echo "0")
+    FILE_SIZE=$(stat -f%z "$CARD_BUILD_PATH" 2>/dev/null || stat -c%s "$CARD_BUILD_PATH" 2>/dev/null || echo "0")
     if [ "$FILE_SIZE" -lt 50000 ]; then
         echo "⚠️  Warning: Built file is suspiciously small (${FILE_SIZE} bytes)"
         echo "   This might indicate dependencies weren't bundled correctly"
@@ -206,15 +208,15 @@ elif [ "$FORCE_BUILD" = "1" ] || [ ! -f "dist/bom-local-card.js" ]; then
     fi
     
     # Check for external imports (should not exist if dependencies are bundled)
-    if grep -q "from ['\"]lit['\"]" dist/bom-local-card.js 2>/dev/null || \
-       grep -q "from ['\"]custom-card-helpers['\"]" dist/bom-local-card.js 2>/dev/null; then
+    if grep -q "from ['\"]lit['\"]" "$CARD_BUILD_PATH" 2>/dev/null || \
+       grep -q "from ['\"]custom-card-helpers['\"]" "$CARD_BUILD_PATH" 2>/dev/null; then
         echo "⚠️  Warning: Found external import statements in built file"
         echo "   Dependencies may not be bundled. Check rollup.config.js"
     fi
     
     echo "✅ Build complete (${FILE_SIZE} bytes)"
 else
-    echo "✅ Using existing dist/bom-local-card.js"
+    echo "✅ Using existing $CARD_BUILD_PATH"
     echo "   (Use --force-build to rebuild, --docker-build or --npm-build to specify method)"
 fi
 
@@ -246,42 +248,8 @@ fi
 if [ "$CONTAINERS_RUNNING" = "1" ]; then
     echo "🔄 Updating card in running test environment (preserving HA state)..."
     
-    # Copy card file
-    echo "📋 Updating card file..."
-    mkdir -p test-ha/config/www
-    
-    # Copy file using Docker (containers run as root, so we use root to write)
-    docker run --rm \
-        -v "$(pwd)/dist/bom-local-card.js:/source/bom-local-card.js:ro" \
-        -v "$(pwd)/test-ha/config/www:/dest:rw" \
-        -u root \
-        alpine:latest \
-        sh -c "cp /source/bom-local-card.js /dest/bom-local-card.js && chmod 644 /dest/bom-local-card.js" 2>/dev/null || {
-        echo "❌ Error: Failed to copy card file"
-        exit 1
-    }
-    echo "   ✅ Card file copied successfully"
-    
-    # Verify copy succeeded
-    if [ ! -f "test-ha/config/www/bom-local-card.js" ]; then
-        echo "❌ Error: Failed to update card file"
-        exit 1
-    fi
-    
-    # Verify file sizes match
-    SOURCE_SIZE=$(stat -f%z "dist/bom-local-card.js" 2>/dev/null || stat -c%s "dist/bom-local-card.js" 2>/dev/null)
-    DEST_SIZE=$(stat -f%z "test-ha/config/www/bom-local-card.js" 2>/dev/null || stat -c%s "test-ha/config/www/bom-local-card.js" 2>/dev/null)
-    if [ "$SOURCE_SIZE" != "$DEST_SIZE" ]; then
-        echo "❌ Error: File sizes don't match after copy"
-        exit 1
-    fi
-    
-    # Verify file contains expected content (basic sanity check)
-    if ! grep -q "resolveImageUrl\|BOM-LOCAL-RADAR-CARD" test-ha/config/www/bom-local-card.js 2>/dev/null; then
-        echo "   ⚠️  Warning: Card file may not be valid (missing expected content)"
-    fi
-    
-    echo "✅ Card file updated (${SOURCE_SIZE} bytes)"
+    # Copy card file - no longer needed as integration is mounted
+    echo "📋 Integration is mounted directly, no file copy needed."
     
     # Copy configuration files to HA config directory (for dashboard changes)
     echo "📋 Updating HA configuration files..."
@@ -409,69 +377,8 @@ mkdir -p test-ha/config/www
 mkdir -p test-ha/cache
 
 # Ensure directories exist (Docker will create files as current user due to user: setting in compose)
-# Copy built card file to www directory (for /local/ access in HA)
-echo "📋 Copying card file to www directory..."
-mkdir -p test-ha/config/www
-
-# Check if update is needed by comparing file sizes and content
-NEEDS_UPDATE=1
-if [ -f "test-ha/config/www/bom-local-card.js" ]; then
-    SOURCE_SIZE=$(stat -f%z "dist/bom-local-card.js" 2>/dev/null || stat -c%s "dist/bom-local-card.js" 2>/dev/null)
-    DEST_SIZE=$(stat -f%z "test-ha/config/www/bom-local-card.js" 2>/dev/null || stat -c%s "test-ha/config/www/bom-local-card.js" 2>/dev/null)
-    
-    # Check if sizes match and if the file contains expected content (resolveImageUrl function)
-    if [ "$SOURCE_SIZE" = "$DEST_SIZE" ]; then
-        # Check if file contains key function to verify it's the latest version
-        if grep -q "resolveImageUrl" test-ha/config/www/bom-local-card.js 2>/dev/null || \
-           grep -q "Resolve relative image URLs" test-ha/config/www/bom-local-card.js 2>/dev/null; then
-            # File exists, sizes match, and contains expected content - may not need update
-            # But we'll update anyway to be safe, or check modification time
-            SOURCE_MTIME=$(stat -f%m "dist/bom-local-card.js" 2>/dev/null || stat -c%Y "dist/bom-local-card.js" 2>/dev/null)
-            DEST_MTIME=$(stat -f%m "test-ha/config/www/bom-local-card.js" 2>/dev/null || stat -c%Y "test-ha/config/www/bom-local-card.js" 2>/dev/null)
-            if [ "$SOURCE_MTIME" -le "$DEST_MTIME" ]; then
-                NEEDS_UPDATE=0
-            fi
-        fi
-    fi
-fi
-
-if [ "$NEEDS_UPDATE" = "1" ]; then
-    # Copy file using Docker (containers run as root, so we use root to write)
-    echo "   Copying file using Docker..."
-    docker run --rm \
-        -v "$(pwd)/dist/bom-local-card.js:/source/bom-local-card.js:ro" \
-        -v "$(pwd)/test-ha/config/www:/dest:rw" \
-        -u root \
-        alpine:latest \
-        sh -c "cp /source/bom-local-card.js /dest/bom-local-card.js && chmod 644 /dest/bom-local-card.js" 2>/dev/null || {
-        echo "❌ Error: Failed to copy card file"
-        exit 1
-    }
-    echo "   ✅ Card file copied successfully"
-
-    # Verify copy succeeded
-    if [ ! -f "test-ha/config/www/bom-local-card.js" ]; then
-        echo "❌ Error: Failed to copy card file to www directory"
-        exit 1
-    fi
-
-    # Verify file sizes match
-    SOURCE_SIZE=$(stat -f%z "dist/bom-local-card.js" 2>/dev/null || stat -c%s "dist/bom-local-card.js" 2>/dev/null)
-    DEST_SIZE=$(stat -f%z "test-ha/config/www/bom-local-card.js" 2>/dev/null || stat -c%s "test-ha/config/www/bom-local-card.js" 2>/dev/null)
-    if [ "$SOURCE_SIZE" != "$DEST_SIZE" ]; then
-        echo "❌ Error: File sizes don't match after copy"
-        exit 1
-    fi
-
-    # Verify file contains expected content (basic sanity check)
-    if ! grep -q "resolveImageUrl\|BOM-LOCAL-RADAR-CARD" test-ha/config/www/bom-local-card.js 2>/dev/null; then
-        echo "   ⚠️  Warning: Card file may not be valid (missing expected content)"
-    fi
-
-    echo "✅ Card file copied successfully"
-else
-    echo "✅ Card file is up to date (skipping copy)"
-fi
+# Integration is mounted directly, skipping redundant copy
+echo "📋 Integration is mounted directly."
 
 # Copy configuration files to HA config directory
 echo "📋 Copying HA configuration files..."

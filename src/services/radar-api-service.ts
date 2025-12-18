@@ -1,10 +1,10 @@
 import { RadarResponse, RadarTimeSeriesResponse, RadarFrame, ErrorState } from '../types';
 import { parseApiError, parseErrorResponse } from '../utils/error-handler';
 import { resolveImageUrl } from '../utils/url-resolver';
-import { DEFAULT_SERVICE_URL } from '../const';
+import { HomeAssistant } from 'custom-card-helpers';
 
 export interface FetchRadarOptions {
-  serviceUrl: string;
+  hass: HomeAssistant;
   suburb: string;
   state: string;
   timespan?: string;
@@ -15,39 +15,30 @@ export interface FetchRadarOptions {
 
 export class RadarApiService {
   /**
-   * Fetches latest radar frames from /api/radar/{suburb}/{state}
+   * Fetches latest radar frames via HA WebSocket API
    */
   async fetchLatestFrames(options: FetchRadarOptions): Promise<RadarResponse | null> {
-    const { serviceUrl, suburb, state, onError } = options;
-    const url = `${serviceUrl}/api/radar/${suburb}/${state}`;
+    const { hass, suburb, state, onError } = options;
     
     try {
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: { 'Accept': 'application/json' },
+      const data = await hass.callWS<any>({
+        type: 'bom_local/get_radar_data',
+        suburb,
+        state,
       });
 
-      if (!response.ok) {
-        const { errorData, parsedJson } = await parseErrorResponse(response);
-        const error = parseApiError(response, errorData, parsedJson, {
-          retryAction: () => this.fetchLatestFrames(options),
-          defaultRetryAfter: 30,
-        });
+      // Handle service-level errors (e.g. CACHE_NOT_FOUND)
+      if (data.errorCode || data.ErrorCode || data.error) {
+        const error = parseApiError(
+          { ok: false, status: 404, statusText: 'Not Found', url: '/api/radar' } as Response,
+          data,
+          true,
+          {
+            retryAction: () => this.fetchLatestFrames(options),
+            defaultRetryAfter: 30,
+          }
+        );
         onError(error);
-        return null;
-      }
-
-      const data: any = await response.json();
-      
-      // Handle legacy error format (shouldn't happen with structured errors, but handle for compatibility)
-      if (data.error) {
-        onError({
-          message: data.error || 'Service returned an error',
-          type: 'cache',
-          retryable: true,
-          retryAction: () => this.fetchLatestFrames(options),
-          retryAfter: data.retryAfter || 30,
-        });
         return null;
       }
 
@@ -56,86 +47,82 @@ export class RadarApiService {
         throw new Error('No frames available in response');
       }
 
-      // Resolve relative image URLs against service URL
-      // Service returns relative URLs like "/api/radar/.../frame/..." 
-      // which need to be absolute for browser to fetch from correct origin
+      // Resolve relative image URLs through HA proxy
       data.frames.forEach((frame: RadarFrame) => {
         if (frame.imageUrl) {
-          frame.imageUrl = resolveImageUrl(frame.imageUrl, serviceUrl);
+          frame.imageUrl = resolveImageUrl(frame.imageUrl);
         }
       });
 
       return data;
-    } catch (err) {
+    } catch (err: any) {
       this.handleFetchError(err, options);
       return null;
     }
   }
 
   /**
-   * Fetches historical radar data from /api/radar/{suburb}/{state}/timeseries
+   * Fetches historical radar data via HA WebSocket API
    */
   async fetchHistoricalFrames(options: FetchRadarOptions): Promise<RadarResponse | null> {
-    const { serviceUrl, suburb, state, timespan, customStartTime, customEndTime, onError } = options;
+    const { hass, suburb, state, timespan, customStartTime, customEndTime, onError } = options;
     
     try {
-      let startTime: Date | null = null;
-      let endTime = new Date();
+      let startTime: string | null = null;
+      let endTime = new Date().toISOString();
 
       if (timespan === 'custom') {
-        if (customStartTime) startTime = new Date(customStartTime);
-        if (customEndTime) endTime = new Date(customEndTime);
+        if (customStartTime) startTime = new Date(customStartTime).toISOString();
+        if (customEndTime) endTime = new Date(customEndTime).toISOString();
       } else if (timespan) {
-        // Calculate hours back from now
         const hours = parseInt(timespan.replace('h', '')) || 1;
-        startTime = new Date(endTime.getTime() - (hours * 60 * 60 * 1000));
+        startTime = new Date(Date.now() - (hours * 60 * 60 * 1000)).toISOString();
       }
 
       if (!startTime) {
         throw new Error('Invalid timespan configuration');
       }
 
-      // Build query parameters for timeseries endpoint
-      const url = `${serviceUrl}/api/radar/${suburb}/${state}/timeseries?startTime=${startTime.toISOString()}&endTime=${endTime.toISOString()}`;
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: { 'Accept': 'application/json' },
+      const data = await hass.callWS<any>({
+        type: 'bom_local/get_radar_data',
+        suburb,
+        state,
+        startTime,
+        endTime,
       });
-
-      if (!response.ok) {
-        const { errorData, parsedJson } = await parseErrorResponse(response);
-        const error = parseApiError(response, errorData, parsedJson, {
-          retryAction: () => this.fetchHistoricalFrames(options),
-          defaultRetryAfter: 30,
-        });
+      
+      // Handle service-level errors (e.g. TIME_RANGE_ERROR or CACHE_NOT_FOUND)
+      if (data.errorCode || data.ErrorCode || data.error) {
+        const error = parseApiError(
+          { ok: false, status: 404, statusText: 'Not Found', url: '/timeseries' } as Response,
+          data,
+          true,
+          {
+            retryAction: () => this.fetchHistoricalFrames(options),
+            defaultRetryAfter: 30,
+          }
+        );
         onError(error);
         return null;
       }
 
-      const data: RadarTimeSeriesResponse = await response.json();
-      
       if (!data.cacheFolders || data.cacheFolders.length === 0) {
         throw new Error('No historical data found for the specified time range.');
       }
 
       // Flatten all frames from all cache folders
-      // The service already sets absoluteObservationTime on each frame
       const allFrames: RadarFrame[] = [];
       data.cacheFolders.forEach(cacheFolder => {
         cacheFolder.frames.forEach(frame => {
-          // Store folder metadata for reference (service already sets absoluteObservationTime)
           frame.cacheTimestamp = cacheFolder.cacheTimestamp;
           frame.observationTime = cacheFolder.observationTime;
           frame.cacheFolderName = cacheFolder.cacheFolderName;
           
-          // Resolve relative image URLs against service URL
           if (frame.imageUrl) {
-            frame.imageUrl = resolveImageUrl(frame.imageUrl, serviceUrl);
+            frame.imageUrl = resolveImageUrl(frame.imageUrl);
           }
           
-          // Ensure absoluteObservationTime is set (service should provide this, but handle if missing)
           if (!frame.absoluteObservationTime && frame.observationTime && frame.minutesAgo !== undefined) {
-            // Fallback: calculate from observation time and minutes ago
             const obsTime = new Date(frame.observationTime);
             frame.absoluteObservationTime = new Date(obsTime.getTime() - (frame.minutesAgo * 60 * 1000)).toISOString();
           }
@@ -145,39 +132,39 @@ export class RadarApiService {
       });
 
       // Re-index frames sequentially
+      allFrames.sort((a, b) => new Date(a.absoluteObservationTime!).getTime() - new Date(b.absoluteObservationTime!).getTime());
       allFrames.forEach((frame, idx) => {
         frame.sequentialIndex = idx;
       });
 
-      // Fetch latest metadata for display from /api/radar/{suburb}/{state}/metadata
+      // Fetch latest metadata for display
       let metadata: Partial<RadarResponse> = {};
       try {
-        const metadataUrl = `${serviceUrl}/api/radar/${suburb}/${state}/metadata`;
-        const metadataResponse = await fetch(metadataUrl);
-        if (metadataResponse.ok) {
-          metadata = await metadataResponse.json();
-        }
+        metadata = await hass.callWS<RadarResponse>({
+          type: 'bom_local/get_radar_data',
+          suburb,
+          state
+        });
       } catch (err) {
         console.debug('Could not fetch metadata:', err);
       }
 
-      // Create RadarResponse-like object
       const newestCacheFolder = data.cacheFolders[data.cacheFolders.length - 1];
       const radarResponse: RadarResponse = {
         frames: allFrames,
-        lastUpdated: endTime.toISOString(),
-        observationTime: metadata.observationTime || newestCacheFolder?.observationTime || endTime.toISOString(),
-        forecastTime: endTime.toISOString(),
+        lastUpdated: endTime,
+        observationTime: metadata.observationTime || newestCacheFolder?.observationTime || endTime,
+        forecastTime: endTime,
         weatherStation: metadata.weatherStation,
         distance: metadata.distance,
         cacheIsValid: metadata.cacheIsValid ?? true,
-        cacheExpiresAt: metadata.cacheExpiresAt || endTime.toISOString(),
+        cacheExpiresAt: metadata.cacheExpiresAt || endTime,
         isUpdating: metadata.isUpdating || false,
-        nextUpdateTime: metadata.nextUpdateTime || endTime.toISOString(),
+        nextUpdateTime: metadata.nextUpdateTime || endTime,
       };
 
       return radarResponse;
-    } catch (err) {
+    } catch (err: any) {
       this.handleFetchError(err, options);
       return null;
     }
@@ -187,21 +174,13 @@ export class RadarApiService {
    * Handles fetch errors and categorizes them appropriately
    */
   private handleFetchError(err: any, options: FetchRadarOptions): void {
-    if (err instanceof TypeError && err.message.includes('fetch')) {
-      options.onError({
-        message: 'Network error: Unable to connect to service',
-        type: 'network',
-        retryable: true,
-        retryAction: () => this.fetchLatestFrames(options),
-      });
-    } else {
-      options.onError({
-        message: err instanceof Error ? err.message : 'Unknown error occurred',
-        type: 'unknown',
-        retryable: true,
-        retryAction: () => this.fetchLatestFrames(options),
-      });
-    }
+    const message = err?.message || (typeof err === 'string' ? err : 'Unknown error occurred');
+    options.onError({
+      message: message,
+      type: 'unknown',
+      retryable: true,
+      retryAction: () => this.fetchLatestFrames(options),
+    });
   }
 }
 

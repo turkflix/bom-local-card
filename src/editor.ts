@@ -70,13 +70,7 @@ export class BomLocalRadarCardEditor extends LitElement implements LovelaceCardE
     return html`
       <div class="editor">
         <div class="section">
-          <h3>Service Configuration</h3>
-          <ha-textfield
-            label="Service URL"
-            .value=${this._config.service_url || ''}
-            @input=${(e: Event) => this._updateConfig('service_url', (e.target as HTMLInputElement).value)}
-            helper="Base URL of bom-local-service (e.g., http://localhost:8082)"
-          ></ha-textfield>
+          <h3>Location Configuration</h3>
           <ha-textfield
             label="Suburb"
             .value=${this._config.suburb || ''}

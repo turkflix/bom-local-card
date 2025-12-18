@@ -101,18 +101,24 @@ clean_test() {
         echo "   ✅ Cleared .storage directory"
     fi
     
-    # Clean up www directory files (card file) using Docker if needed
-    if [ -f "test-ha/config/www/bom-local-card.js" ]; then
-        echo "   Removing card file..."
-        CURRENT_UID=$(id -u)
-        CURRENT_GID=$(id -g)
-        if ! rm -f test-ha/config/www/bom-local-card.js 2>/dev/null; then
-            docker run --rm \
-                -v "$(pwd)/test-ha/config/www:/www:rw" \
-                -u root \
-                alpine:latest \
-                sh -c "rm -f /www/bom-local-card.js" 2>/dev/null || true
-        fi
+    # Clean up www directory files (wiping all old card versions)
+    echo "   Cleaning www directory..."
+    if [ -d "test-ha/config/www" ]; then
+        docker run --rm \
+            -v "$(pwd)/test-ha/config/www:/www:rw" \
+            -u root \
+            alpine:latest \
+            sh -c "rm -rf /www/*" 2>/dev/null || true
+    fi
+    
+    # Clean up custom_components directory (wiping all old integration versions)
+    echo "   Cleaning custom_components..."
+    if [ -d "test-ha/config/custom_components" ]; then
+        docker run --rm \
+            -v "$(pwd)/test-ha/config/custom_components:/components:rw" \
+            -u root \
+            alpine:latest \
+            sh -c "rm -rf /components/*" 2>/dev/null || true
     fi
     
     # Clean up cache directory (persisted between redeploys, but removed on full clean)

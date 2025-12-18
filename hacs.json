@@ -1,14 +1,6 @@
 {
-  "name": "BOM Local Radar Card",
-  "render_readme": true,
-  "filename": "bom-local-card.js",
-  "homeassistant": "2024.1.0"
+  "name": "BOM Local Radar",
+  "content_type": "integration",
+  "domains": ["bom_local"],
+  "render_readme": true
 }
-
-
-
-
-
-
-
-

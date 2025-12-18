@@ -109,7 +109,7 @@ export interface BomLocalRadarCardConfig extends LovelaceCardConfig {
   type: 'custom:bom-local-card';
   
   // Service configuration
-  service_url?: string;  // Base URL of bom-local-service (e.g., "http://localhost:8082")
+  service_url?: string;  // Internal/Legacy: now managed by the Home Assistant integration
   suburb: string;  // Required: suburb name (e.g., "Pomona")
   state: string;  // Required: state abbreviation (e.g., "QLD")
   
