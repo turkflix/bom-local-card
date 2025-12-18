@@ -6,9 +6,9 @@ import { terser } from 'rollup-plugin-terser';
 const isProd = process.env.NODE_ENV === 'production';
 
 export default {
-  input: 'src/bom-local-radar-card.ts',
+  input: 'src/bom-local-card.ts',
   output: {
-    file: 'dist/bom-local-radar-card.js',
+    file: 'dist/bom-local-card.js',
     format: 'es',
     sourcemap: !isProd,
   },

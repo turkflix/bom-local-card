@@ -25,6 +25,7 @@ jobs:
         run: |
           chmod +x run.sh
           ./run.sh build npm
+          cp dist/bom-local-card.js .
 
       - name: HACS validation
         uses: "hacs/action@main"

@@ -5,7 +5,7 @@
   />
 </p>
 
-# BOM Local Radar Card
+# BOM Local Card
 
 A Home Assistant custom card that displays Australian Bureau of Meteorology (BOM) rain radar data using the local [BOM Local Service](https://github.com/alexhopeoconnor/bom-local-service).
 
@@ -122,7 +122,7 @@ For more detailed service setup and configuration options, see the [BOM Local Se
 
 1. Open HACS in Home Assistant
 2. Go to **Frontend** → **Explore & Download Repositories**
-3. Search for **BOM Local Radar Card**
+3. Search for **BOM Local Card**
 4. Click **Download**
 5. Restart Home Assistant
 
@@ -130,7 +130,7 @@ For more detailed service setup and configuration options, see the [BOM Local Se
 
 1. Edit your Lovelace dashboard
 2. Click **Add Card**
-3. Search for **BOM Local Radar Card** or select **Custom: BOM Local Radar Card**
+3. Search for **BOM Local Card** or select **Custom: BOM Local Card**
 4. Configure the card (see [Configuration](#configuration) section below)
 5. Set the **Service URL** to match your service installation (e.g., `http://localhost:8082` or `http://192.168.1.50:8082`)
 
@@ -139,7 +139,7 @@ For more detailed service setup and configuration options, see the [BOM Local Se
 ### Using the Visual Editor (Recommended)
 
 1. Add a card to your Lovelace dashboard
-2. Search for **BOM Local Radar Card** or select **Custom: BOM Local Radar Card**
+2. Search for **BOM Local Card** or select **Custom: BOM Local Card**
 3. Configure using the visual editor:
    
    **Service Configuration**:
@@ -189,7 +189,7 @@ For more detailed service setup and configuration options, see the [BOM Local Se
 ### Using YAML
 
 ```yaml
-type: custom:bom-local-radar-card
+type: custom:bom-local-card
 service_url: http://localhost:8082
 suburb: Pomona
 state: QLD
@@ -204,7 +204,7 @@ refresh_interval: 30
 For custom time ranges:
 
 ```yaml
-type: custom:bom-local-radar-card
+type: custom:bom-local-card
 service_url: http://localhost:8082
 suburb: Brisbane
 state: QLD
@@ -293,7 +293,7 @@ custom_end_time: "2024-01-15T14:00:00Z"
 Display the latest radar frames for a location:
 
 ```yaml
-type: custom:bom-local-radar-card
+type: custom:bom-local-card
 suburb: Brisbane
 state: QLD
 service_url: http://192.168.1.100:8082
@@ -304,7 +304,7 @@ service_url: http://192.168.1.100:8082
 Show just the radar image with no controls or metadata:
 
 ```yaml
-type: custom:bom-local-radar-card
+type: custom:bom-local-card
 suburb: Brisbane
 state: QLD
 show_metadata: false
@@ -316,7 +316,7 @@ show_controls: false
 Overlay both controls and metadata on the radar image to save space:
 
 ```yaml
-type: custom:bom-local-radar-card
+type: custom:bom-local-card
 suburb: Brisbane
 state: QLD
 show_controls:
@@ -337,7 +337,7 @@ metadata_overlay_opacity: 0.85
 Zoom in on the radar image (may pixelate at higher zoom levels):
 
 ```yaml
-type: custom:bom-local-radar-card
+type: custom:bom-local-card
 suburb: Brisbane
 state: QLD
 image_zoom: 1.5
@@ -349,7 +349,7 @@ image_fit: contain
 Show only specific metadata items:
 
 ```yaml
-type: custom:bom-local-radar-card
+type: custom:bom-local-card
 suburb: Brisbane
 state: QLD
 show_metadata:
@@ -368,7 +368,7 @@ show_metadata:
 Show only specific controls and position them above the image:
 
 ```yaml
-type: custom:bom-local-radar-card
+type: custom:bom-local-card
 suburb: Brisbane
 state: QLD
 show_controls:
@@ -385,7 +385,7 @@ show_controls:
 View radar history from the past 3 hours:
 
 ```yaml
-type: custom:bom-local-radar-card
+type: custom:bom-local-card
 suburb: Melbourne
 state: VIC
 service_url: http://192.168.1.100:8082
@@ -399,7 +399,7 @@ frame_interval: 1.5
 View radar data for a specific time period:
 
 ```yaml
-type: custom:bom-local-radar-card
+type: custom:bom-local-card
 suburb: Sydney
 state: NSW
 service_url: http://192.168.1.100:8082
@@ -413,7 +413,7 @@ custom_end_time: "2024-01-15T14:00:00Z"
 Display radar with manual controls only:
 
 ```yaml
-type: custom:bom-local-radar-card
+type: custom:bom-local-card
 suburb: Adelaide
 state: SA
 service_url: http://192.168.1.100:8082
@@ -426,7 +426,7 @@ frame_interval: 3.0
 If your BOM Local Service is running on a different machine:
 
 ```yaml
-type: custom:bom-local-radar-card
+type: custom:bom-local-card
 suburb: Perth
 state: WA
 service_url: http://192.168.1.50:8082
@@ -502,11 +502,11 @@ The repository includes several helper scripts for development:
 The main script that handles building, testing, and cleaning:
 
 ```bash
-./run.sh [COMMAND] [BUILD_METHOD]
+./run.sh [COMMAND] [BUILD_METHOD] [TARGET]
 ```
 
 **Commands:**
-- `build [docker|npm]` - Build the card (auto-detects method if not specified)
+- `build [docker|npm] [dev|prod]` - Build the card (auto-detects method if not specified)
 - `test` - Build and start the test Home Assistant environment
 - `update [docker|npm]` - Rebuild card and update running test environment (preserves HA state)
 - `clean` - Clean test environment (stops containers, removes data)
@@ -515,10 +515,15 @@ The main script that handles building, testing, and cleaning:
 - `docker` - Use Docker to build (isolated, no local Node.js needed)
 - `npm` - Use local npm/Node.js to build
 
+**Targets:**
+- `dev` (default) - Unminified build with sourcemaps for debugging
+- `prod` - Minified build using Terser, no sourcemaps (for HACS release)
+
 **Examples:**
 ```bash
-./run.sh build          # Auto-detect: Docker (preferred) or npm
-./run.sh build docker   # Force Docker build
+./run.sh build          # Auto-detect method, dev build
+./run.sh build docker   # Force Docker, dev build
+./run.sh build npm prod # Build production version with local npm
 ./run.sh test           # Build and start test environment
 ./run.sh update         # Rebuild and update running environment (no data loss)
 ./run.sh clean          # Clean test environment completely
@@ -568,7 +573,7 @@ If you prefer to build manually:
    ```bash
    npm run build
    ```
-   The built file will be in `dist/bom-local-radar-card.js`
+   The built file will be in `dist/bom-local-card.js`
 
 4. **Development with watch mode:**
    ```bash

@@ -106,7 +106,7 @@ export interface GridOptions {
 
 // Card configuration
 export interface BomLocalRadarCardConfig extends LovelaceCardConfig {
-  type: 'custom:bom-local-radar-card';
+  type: 'custom:bom-local-card';
   
   // Service configuration
   service_url?: string;  // Base URL of bom-local-service (e.g., "http://localhost:8082")

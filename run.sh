@@ -99,16 +99,16 @@ clean_test() {
     fi
     
     # Clean up www directory files (card file) using Docker if needed
-    if [ -f "test-ha/config/www/bom-local-radar-card.js" ]; then
+    if [ -f "test-ha/config/www/bom-local-card.js" ]; then
         echo "   Removing card file..."
         CURRENT_UID=$(id -u)
         CURRENT_GID=$(id -g)
-        if ! rm -f test-ha/config/www/bom-local-radar-card.js 2>/dev/null; then
+        if ! rm -f test-ha/config/www/bom-local-card.js 2>/dev/null; then
             docker run --rm \
                 -v "$(pwd)/test-ha/config/www:/www:rw" \
                 -u root \
                 alpine:latest \
-                sh -c "rm -f /www/bom-local-radar-card.js" 2>/dev/null || true
+                sh -c "rm -f /www/bom-local-card.js" 2>/dev/null || true
         fi
     fi
     

@@ -49,11 +49,11 @@ fi
 docker run --rm $ENV_ARGS -v "$(pwd)/dist:/build/dist" bom-local-card-builder
 
 # Check if build succeeded
-if [ ! -f "dist/bom-local-radar-card.js" ]; then
-    echo "❌ Error: Build failed - dist/bom-local-radar-card.js not found"
+if [ ! -f "dist/bom-local-card.js" ]; then
+    echo "❌ Error: Build failed - dist/bom-local-card.js not found"
     exit 1
 fi
 
-FILE_SIZE=$(stat -f%z "dist/bom-local-radar-card.js" 2>/dev/null || stat -c%s "dist/bom-local-radar-card.js" 2>/dev/null || echo "0")
+FILE_SIZE=$(stat -f%z "dist/bom-local-card.js" 2>/dev/null || stat -c%s "dist/bom-local-card.js" 2>/dev/null || echo "0")
 echo "✅ Build complete (${FILE_SIZE} bytes)"
 

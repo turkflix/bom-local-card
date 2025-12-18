@@ -29,7 +29,7 @@ interface CacheRange {
   timeSpanMinutes?: number;
 }
 
-@customElement('bom-local-radar-card-editor')
+@customElement('bom-local-card-editor')
 export class BomLocalRadarCardEditor extends LitElement implements LovelaceCardEditor {
   @property({ attribute: false }) public hass?: HomeAssistant;
   @state() private _config: BomLocalRadarCardConfig = this._mergeWithDefaults();
@@ -55,7 +55,7 @@ export class BomLocalRadarCardEditor extends LitElement implements LovelaceCardE
     return {
       ...defaults,
       ...config,
-      type: 'custom:bom-local-radar-card',
+      type: 'custom:bom-local-card',
     } as BomLocalRadarCardConfig;
   }
 

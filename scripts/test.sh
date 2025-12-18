@@ -170,11 +170,11 @@ build_with_docker() {
 # Build card
 if [ "$SKIP_BUILD" = "1" ]; then
     echo "⏭️  Skipping build (--skip-build)"
-    if [ ! -f "dist/bom-local-radar-card.js" ]; then
-        echo "❌ Error: dist/bom-local-radar-card.js not found and --skip-build was used"
+    if [ ! -f "dist/bom-local-card.js" ]; then
+        echo "❌ Error: dist/bom-local-card.js not found and --skip-build was used"
         exit 1
     fi
-elif [ "$FORCE_BUILD" = "1" ] || [ ! -f "dist/bom-local-radar-card.js" ]; then
+elif [ "$FORCE_BUILD" = "1" ] || [ ! -f "dist/bom-local-card.js" ]; then
     # If FORCE_BUILD is set, also force Docker rebuild
     if [ "$FORCE_BUILD" = "1" ] && [ "$USE_DOCKER_BUILD" = "1" ]; then
         export FORCE_REBUILD=1
@@ -192,13 +192,13 @@ elif [ "$FORCE_BUILD" = "1" ] || [ ! -f "dist/bom-local-radar-card.js" ]; then
         fi
     fi
     
-    if [ ! -f "dist/bom-local-radar-card.js" ]; then
-        echo "❌ Error: dist/bom-local-radar-card.js not found after build"
+    if [ ! -f "dist/bom-local-card.js" ]; then
+        echo "❌ Error: dist/bom-local-card.js not found after build"
         exit 1
     fi
     
     # Verify build quality
-    FILE_SIZE=$(stat -f%z "dist/bom-local-radar-card.js" 2>/dev/null || stat -c%s "dist/bom-local-radar-card.js" 2>/dev/null || echo "0")
+    FILE_SIZE=$(stat -f%z "dist/bom-local-card.js" 2>/dev/null || stat -c%s "dist/bom-local-card.js" 2>/dev/null || echo "0")
     if [ "$FILE_SIZE" -lt 50000 ]; then
         echo "⚠️  Warning: Built file is suspiciously small (${FILE_SIZE} bytes)"
         echo "   This might indicate dependencies weren't bundled correctly"
@@ -206,15 +206,15 @@ elif [ "$FORCE_BUILD" = "1" ] || [ ! -f "dist/bom-local-radar-card.js" ]; then
     fi
     
     # Check for external imports (should not exist if dependencies are bundled)
-    if grep -q "from ['\"]lit['\"]" dist/bom-local-radar-card.js 2>/dev/null || \
-       grep -q "from ['\"]custom-card-helpers['\"]" dist/bom-local-radar-card.js 2>/dev/null; then
+    if grep -q "from ['\"]lit['\"]" dist/bom-local-card.js 2>/dev/null || \
+       grep -q "from ['\"]custom-card-helpers['\"]" dist/bom-local-card.js 2>/dev/null; then
         echo "⚠️  Warning: Found external import statements in built file"
         echo "   Dependencies may not be bundled. Check rollup.config.js"
     fi
     
     echo "✅ Build complete (${FILE_SIZE} bytes)"
 else
-    echo "✅ Using existing dist/bom-local-radar-card.js"
+    echo "✅ Using existing dist/bom-local-card.js"
     echo "   (Use --force-build to rebuild, --docker-build or --npm-build to specify method)"
 fi
 
@@ -252,32 +252,32 @@ if [ "$CONTAINERS_RUNNING" = "1" ]; then
     
     # Copy file using Docker (containers run as root, so we use root to write)
     docker run --rm \
-        -v "$(pwd)/dist/bom-local-radar-card.js:/source/bom-local-radar-card.js:ro" \
+        -v "$(pwd)/dist/bom-local-card.js:/source/bom-local-card.js:ro" \
         -v "$(pwd)/test-ha/config/www:/dest:rw" \
         -u root \
         alpine:latest \
-        sh -c "cp /source/bom-local-radar-card.js /dest/bom-local-radar-card.js && chmod 644 /dest/bom-local-radar-card.js" 2>/dev/null || {
+        sh -c "cp /source/bom-local-card.js /dest/bom-local-card.js && chmod 644 /dest/bom-local-card.js" 2>/dev/null || {
         echo "❌ Error: Failed to copy card file"
         exit 1
     }
     echo "   ✅ Card file copied successfully"
     
     # Verify copy succeeded
-    if [ ! -f "test-ha/config/www/bom-local-radar-card.js" ]; then
+    if [ ! -f "test-ha/config/www/bom-local-card.js" ]; then
         echo "❌ Error: Failed to update card file"
         exit 1
     fi
     
     # Verify file sizes match
-    SOURCE_SIZE=$(stat -f%z "dist/bom-local-radar-card.js" 2>/dev/null || stat -c%s "dist/bom-local-radar-card.js" 2>/dev/null)
-    DEST_SIZE=$(stat -f%z "test-ha/config/www/bom-local-radar-card.js" 2>/dev/null || stat -c%s "test-ha/config/www/bom-local-radar-card.js" 2>/dev/null)
+    SOURCE_SIZE=$(stat -f%z "dist/bom-local-card.js" 2>/dev/null || stat -c%s "dist/bom-local-card.js" 2>/dev/null)
+    DEST_SIZE=$(stat -f%z "test-ha/config/www/bom-local-card.js" 2>/dev/null || stat -c%s "test-ha/config/www/bom-local-card.js" 2>/dev/null)
     if [ "$SOURCE_SIZE" != "$DEST_SIZE" ]; then
         echo "❌ Error: File sizes don't match after copy"
         exit 1
     fi
     
     # Verify file contains expected content (basic sanity check)
-    if ! grep -q "resolveImageUrl\|BOM-LOCAL-RADAR-CARD" test-ha/config/www/bom-local-radar-card.js 2>/dev/null; then
+    if ! grep -q "resolveImageUrl\|BOM-LOCAL-RADAR-CARD" test-ha/config/www/bom-local-card.js 2>/dev/null; then
         echo "   ⚠️  Warning: Card file may not be valid (missing expected content)"
     fi
     
@@ -415,19 +415,19 @@ mkdir -p test-ha/config/www
 
 # Check if update is needed by comparing file sizes and content
 NEEDS_UPDATE=1
-if [ -f "test-ha/config/www/bom-local-radar-card.js" ]; then
-    SOURCE_SIZE=$(stat -f%z "dist/bom-local-radar-card.js" 2>/dev/null || stat -c%s "dist/bom-local-radar-card.js" 2>/dev/null)
-    DEST_SIZE=$(stat -f%z "test-ha/config/www/bom-local-radar-card.js" 2>/dev/null || stat -c%s "test-ha/config/www/bom-local-radar-card.js" 2>/dev/null)
+if [ -f "test-ha/config/www/bom-local-card.js" ]; then
+    SOURCE_SIZE=$(stat -f%z "dist/bom-local-card.js" 2>/dev/null || stat -c%s "dist/bom-local-card.js" 2>/dev/null)
+    DEST_SIZE=$(stat -f%z "test-ha/config/www/bom-local-card.js" 2>/dev/null || stat -c%s "test-ha/config/www/bom-local-card.js" 2>/dev/null)
     
     # Check if sizes match and if the file contains expected content (resolveImageUrl function)
     if [ "$SOURCE_SIZE" = "$DEST_SIZE" ]; then
         # Check if file contains key function to verify it's the latest version
-        if grep -q "resolveImageUrl" test-ha/config/www/bom-local-radar-card.js 2>/dev/null || \
-           grep -q "Resolve relative image URLs" test-ha/config/www/bom-local-radar-card.js 2>/dev/null; then
+        if grep -q "resolveImageUrl" test-ha/config/www/bom-local-card.js 2>/dev/null || \
+           grep -q "Resolve relative image URLs" test-ha/config/www/bom-local-card.js 2>/dev/null; then
             # File exists, sizes match, and contains expected content - may not need update
             # But we'll update anyway to be safe, or check modification time
-            SOURCE_MTIME=$(stat -f%m "dist/bom-local-radar-card.js" 2>/dev/null || stat -c%Y "dist/bom-local-radar-card.js" 2>/dev/null)
-            DEST_MTIME=$(stat -f%m "test-ha/config/www/bom-local-radar-card.js" 2>/dev/null || stat -c%Y "test-ha/config/www/bom-local-radar-card.js" 2>/dev/null)
+            SOURCE_MTIME=$(stat -f%m "dist/bom-local-card.js" 2>/dev/null || stat -c%Y "dist/bom-local-card.js" 2>/dev/null)
+            DEST_MTIME=$(stat -f%m "test-ha/config/www/bom-local-card.js" 2>/dev/null || stat -c%Y "test-ha/config/www/bom-local-card.js" 2>/dev/null)
             if [ "$SOURCE_MTIME" -le "$DEST_MTIME" ]; then
                 NEEDS_UPDATE=0
             fi
@@ -439,32 +439,32 @@ if [ "$NEEDS_UPDATE" = "1" ]; then
     # Copy file using Docker (containers run as root, so we use root to write)
     echo "   Copying file using Docker..."
     docker run --rm \
-        -v "$(pwd)/dist/bom-local-radar-card.js:/source/bom-local-radar-card.js:ro" \
+        -v "$(pwd)/dist/bom-local-card.js:/source/bom-local-card.js:ro" \
         -v "$(pwd)/test-ha/config/www:/dest:rw" \
         -u root \
         alpine:latest \
-        sh -c "cp /source/bom-local-radar-card.js /dest/bom-local-radar-card.js && chmod 644 /dest/bom-local-radar-card.js" 2>/dev/null || {
+        sh -c "cp /source/bom-local-card.js /dest/bom-local-card.js && chmod 644 /dest/bom-local-card.js" 2>/dev/null || {
         echo "❌ Error: Failed to copy card file"
         exit 1
     }
     echo "   ✅ Card file copied successfully"
 
     # Verify copy succeeded
-    if [ ! -f "test-ha/config/www/bom-local-radar-card.js" ]; then
+    if [ ! -f "test-ha/config/www/bom-local-card.js" ]; then
         echo "❌ Error: Failed to copy card file to www directory"
         exit 1
     fi
 
     # Verify file sizes match
-    SOURCE_SIZE=$(stat -f%z "dist/bom-local-radar-card.js" 2>/dev/null || stat -c%s "dist/bom-local-radar-card.js" 2>/dev/null)
-    DEST_SIZE=$(stat -f%z "test-ha/config/www/bom-local-radar-card.js" 2>/dev/null || stat -c%s "test-ha/config/www/bom-local-radar-card.js" 2>/dev/null)
+    SOURCE_SIZE=$(stat -f%z "dist/bom-local-card.js" 2>/dev/null || stat -c%s "dist/bom-local-card.js" 2>/dev/null)
+    DEST_SIZE=$(stat -f%z "test-ha/config/www/bom-local-card.js" 2>/dev/null || stat -c%s "test-ha/config/www/bom-local-card.js" 2>/dev/null)
     if [ "$SOURCE_SIZE" != "$DEST_SIZE" ]; then
         echo "❌ Error: File sizes don't match after copy"
         exit 1
     fi
 
     # Verify file contains expected content (basic sanity check)
-    if ! grep -q "resolveImageUrl\|BOM-LOCAL-RADAR-CARD" test-ha/config/www/bom-local-radar-card.js 2>/dev/null; then
+    if ! grep -q "resolveImageUrl\|BOM-LOCAL-RADAR-CARD" test-ha/config/www/bom-local-card.js 2>/dev/null; then
         echo "   ⚠️  Warning: Card file may not be valid (missing expected content)"
     fi
 

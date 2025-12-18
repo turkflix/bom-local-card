@@ -36,12 +36,12 @@ declare global {
 
 window.customCards = window.customCards ?? [];
 window.customCards.push({
-  type: 'bom-local-radar-card',
-  name: 'BOM Local Radar Card',
+  type: 'bom-local-card',
+  name: 'BOM Local Card',
   description: 'A rain radar card using the local BOM service',
 });
 
-@customElement('bom-local-radar-card')
+@customElement('bom-local-card')
 export class BomLocalRadarCard extends LitElement implements LovelaceCard {
   static override styles: CSSResultGroup = [
     cardStyles,
@@ -71,12 +71,12 @@ export class BomLocalRadarCard extends LitElement implements LovelaceCard {
   private apiService = new RadarApiService();
 
   public static async getConfigElement(): Promise<LovelaceCardEditor> {
-    return document.createElement('bom-local-radar-card-editor') as LovelaceCardEditor;
+    return document.createElement('bom-local-card-editor') as LovelaceCardEditor;
   }
 
   public static getStubConfig(): Record<string, unknown> {
     return {
-      type: 'custom:bom-local-radar-card',
+      type: 'custom:bom-local-card',
       suburb: 'Pomona',
       state: 'QLD',
       service_url: 'http://localhost:8082',
@@ -725,8 +725,8 @@ export class BomLocalRadarCard extends LitElement implements LovelaceCard {
   }
 }
 
-if (!customElements.get('bom-local-radar-card')) {
-  customElements.define('bom-local-radar-card', BomLocalRadarCard);
+if (!customElements.get('bom-local-card')) {
+  customElements.define('bom-local-card', BomLocalRadarCard);
 }
 
 
