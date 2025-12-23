@@ -17,6 +17,10 @@ class BomLocalConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_user(self, user_input=None):
         """Handle the initial step."""
+        # Check if YAML configuration already exists by checking if component is loaded
+        if DOMAIN in self.hass.config.components:
+            return self.async_abort(reason="already_configured")
+        
         errors = {}
         if user_input is not None:
             # We could validate the URL here by trying a fetch
@@ -39,7 +43,7 @@ class BomLocalOptionsFlow(config_entries.OptionsFlow):
     """Handle options flow."""
 
     def __init__(self, config_entry):
-        self.config_entry = config_entry
+        super().__init__(config_entry)
 
     async def async_step_init(self, user_input=None):
         """Manage the options."""

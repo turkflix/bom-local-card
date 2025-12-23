@@ -591,6 +591,7 @@ export class BomLocalRadarCard extends LitElement implements LovelaceCard {
         ${this.isLoading 
           ? html`
               <div class="loading">
+                <img class="loading-icon" src="/local/community/bom_local/icon.png" alt="BOM Local Radar" />
                 <ha-circular-progress indeterminate></ha-circular-progress>
                 <div class="loading-message">Loading radar data...</div>
               </div>

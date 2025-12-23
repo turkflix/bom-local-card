@@ -1073,7 +1073,7 @@ BomLocalRadarCardEditor = __decorate([
     t$1('bom-local-card-editor')
 ], BomLocalRadarCardEditor);
 
-const CARD_VERSION = '0.2.0';
+const CARD_VERSION = '0.3.0';
 const DEFAULT_FRAME_INTERVAL = 2.0; // seconds
 const DEFAULT_RESTART_DELAY = 2000; // ms (pause before looping)
 const DEFAULT_REFRESH_INTERVAL = 30; // seconds
@@ -1419,6 +1419,25 @@ const imageStyles = i$3 `
     flex-direction: column;
     align-items: center;
     gap: 12px;
+    z-index: 10;
+  }
+
+  .loading-icon {
+    width: 80px;
+    height: 80px;
+    animation: pulse 2s ease-in-out infinite;
+    opacity: 0.8;
+  }
+
+  @keyframes pulse {
+    0%, 100% {
+      opacity: 0.8;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1.05);
+    }
   }
 
   .loading-message {
@@ -3267,6 +3286,7 @@ let BomLocalRadarCard = class BomLocalRadarCard extends i {
         ${this.isLoading
             ? x `
               <div class="loading">
+                <img class="loading-icon" src="/local/community/bom_local/icon.png" alt="BOM Local Radar" />
                 <ha-circular-progress indeterminate></ha-circular-progress>
                 <div class="loading-message">Loading radar data...</div>
               </div>

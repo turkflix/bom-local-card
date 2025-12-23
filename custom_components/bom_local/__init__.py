@@ -66,6 +66,11 @@ async def _async_setup_integration(hass: HomeAssistant, service_url: str):
             "/local/community/bom_local/bom-local-card.js",
             hass.config.path("custom_components/bom_local/www/bom-local-card.js"),
             True
+        ),
+        StaticPathConfig(
+            "/local/community/bom_local/icon.png",
+            hass.config.path("custom_components/bom_local/icon.png"),
+            True
         )
     ])
 

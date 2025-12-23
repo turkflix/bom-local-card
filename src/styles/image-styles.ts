@@ -72,6 +72,25 @@ export const imageStyles: CSSResultGroup = css`
     flex-direction: column;
     align-items: center;
     gap: 12px;
+    z-index: 10;
+  }
+
+  .loading-icon {
+    width: 80px;
+    height: 80px;
+    animation: pulse 2s ease-in-out infinite;
+    opacity: 0.8;
+  }
+
+  @keyframes pulse {
+    0%, 100% {
+      opacity: 0.8;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1.05);
+    }
   }
 
   .loading-message {
