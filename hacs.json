@@ -1,4 +1,7 @@
 {
-  "name": "BOM Local Radar",
-  "render_readme": true
+  "name": "BOM Local Card",
+  "content_in_root": false,
+  "filename": "bom-local-card.js",
+  "render_readme": true,
+  "persistent_directory": "custom_components/bom_local/www"
 }
