@@ -1,7 +1,6 @@
 {
   "name": "BOM Local Card",
-  "content_in_root": false,
+  "content_in_root": true,
   "filename": "bom-local-card.js",
-  "render_readme": true,
-  "persistent_directory": "custom_components/bom_local/www"
+  "render_readme": true
 }
