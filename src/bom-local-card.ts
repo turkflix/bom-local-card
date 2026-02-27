@@ -4,7 +4,7 @@ import { HomeAssistant, LovelaceCardEditor, LovelaceCard } from 'custom-card-hel
 import './editor';
 import { BomLocalRadarCardConfig, RadarResponse, RadarFrame, MetadataDisplayConfig, ControlsDisplayConfig, ErrorState, GridOptions } from './types';
 import { CARD_VERSION, DEFAULT_FRAME_INTERVAL, DEFAULT_REFRESH_INTERVAL, DEFAULT_RESTART_DELAY } from './const';
-import { RadarApiService } from './services/radar-api-service';
+import { RadarApiService, FetchRadarOptions } from './services/radar-api-service';
 import { cardStyles } from './styles/card-styles';
 import { imageStyles } from './styles/image-styles';
 import { controlsStyles } from './styles/controls-styles';
@@ -145,18 +145,19 @@ export class BomLocalRadarCard extends LitElement implements LovelaceCard {
   }
 
   /**
-   * Fetches radar data from the local service via HA integration
+   * Fetches radar data from the local service via direct HTTP requests
    * Supports both latest frames and historical timeseries
    */
   private async fetchRadarData(): Promise<RadarResponse | null> {
-    const suburb = encodeURIComponent(this._config.suburb);
-    const state = encodeURIComponent(this._config.state);
+    const suburb = this._config.suburb;
+    const state = this._config.state;
     const timespan = this._config.timespan || 'latest';
+    const serviceUrl = this._config.service_url || 'http://localhost:8082';
     
     this.isLoading = true;
 
     const options = {
-      hass: this.hass,
+      serviceUrl,
       suburb,
       state,
       timespan: timespan !== 'latest' ? timespan : undefined,

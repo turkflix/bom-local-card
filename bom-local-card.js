@@ -1164,39 +1164,22 @@ function mapErrorType(apiErrorType) {
     return 'unknown';
 }
 
-/**
- * Resolves a URL through the Home Assistant integration proxy if it's a relative path.
- * The integration provides a proxy at /api/bom_local/proxy/
- */
-function resolveImageUrl(url, serviceUrl) {
-    if (!url)
-        return url;
-    // If URL is already absolute (starts with http:// or https://), use as-is
-    if (url.startsWith('http://') || url.startsWith('https://')) {
-        return url;
-    }
-    // If we are using the HA integration proxy (standard behavior now)
-    const proxyPrefix = '/api/bom_local/proxy';
-    // Remove leading slash if present to avoid double slashes
-    const path = url.startsWith('/') ? url : `/${url}`;
-    return `${proxyPrefix}${path}`;
-}
-
 class RadarApiService {
     /**
-     * Fetches latest radar frames via HA WebSocket API
+     * Fetches latest radar frames via direct HTTP request
      */
     async fetchLatestFrames(options) {
-        const { hass, suburb, state, onError } = options;
+        const { serviceUrl, suburb, state, onError } = options;
         try {
-            const data = await hass.callWS({
-                type: 'bom_local/get_radar_data',
-                suburb,
-                state,
-            });
+            const url = `${serviceUrl}/api/radar/${encodeURIComponent(suburb)}/${encodeURIComponent(state)}/frames`;
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            const data = await response.json();
             // Handle service-level errors (e.g. CACHE_NOT_FOUND)
             if (data.errorCode || data.ErrorCode || data.error) {
-                const error = parseApiError({ ok: false, status: 404, statusText: 'Not Found', url: '/api/radar' }, data, true, {
+                const error = parseApiError(response, data, true, {
                     retryAction: () => this.fetchLatestFrames(options),
                     defaultRetryAfter: 30,
                 });
@@ -1207,10 +1190,10 @@ class RadarApiService {
             if (!data.frames || data.frames.length === 0) {
                 throw new Error('No frames available in response');
             }
-            // Resolve relative image URLs through HA proxy
+            // Resolve relative image URLs to absolute URLs
             data.frames.forEach((frame) => {
                 if (frame.imageUrl) {
-                    frame.imageUrl = resolveImageUrl(frame.imageUrl);
+                    frame.imageUrl = this.resolveImageUrl(frame.imageUrl, serviceUrl);
                 }
             });
             return data;
@@ -1221,37 +1204,36 @@ class RadarApiService {
         }
     }
     /**
-     * Fetches historical radar data via HA WebSocket API
+     * Fetches historical radar data via direct HTTP request
      */
     async fetchHistoricalFrames(options) {
         var _a;
-        const { hass, suburb, state, timespan, customStartTime, customEndTime, onError } = options;
+        const { serviceUrl, suburb, state, timespan, customStartTime, customEndTime, onError } = options;
         try {
-            let startTime = null;
-            let endTime = new Date().toISOString();
+            let url = `${serviceUrl}/api/radar/${encodeURIComponent(suburb)}/${encodeURIComponent(state)}/timeseries`;
+            const params = new URLSearchParams();
             if (timespan === 'custom') {
                 if (customStartTime)
-                    startTime = new Date(customStartTime).toISOString();
+                    params.append('startTime', new Date(customStartTime).toISOString());
                 if (customEndTime)
-                    endTime = new Date(customEndTime).toISOString();
+                    params.append('endTime', new Date(customEndTime).toISOString());
             }
             else if (timespan) {
                 const hours = parseInt(timespan.replace('h', '')) || 1;
-                startTime = new Date(Date.now() - (hours * 60 * 60 * 1000)).toISOString();
+                const startTime = new Date(Date.now() - (hours * 60 * 60 * 1000)).toISOString();
+                params.append('startTime', startTime);
             }
-            if (!startTime) {
-                throw new Error('Invalid timespan configuration');
+            if (params.toString()) {
+                url += '?' + params.toString();
             }
-            const data = await hass.callWS({
-                type: 'bom_local/get_radar_data',
-                suburb,
-                state,
-                startTime,
-                endTime,
-            });
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            const data = await response.json();
             // Handle service-level errors (e.g. TIME_RANGE_ERROR or CACHE_NOT_FOUND)
             if (data.errorCode || data.ErrorCode || data.error) {
-                const error = parseApiError({ ok: false, status: 404, statusText: 'Not Found', url: '/timeseries' }, data, true, {
+                const error = parseApiError(response, data, true, {
                     retryAction: () => this.fetchHistoricalFrames(options),
                     defaultRetryAfter: 30,
                 });
@@ -1269,7 +1251,7 @@ class RadarApiService {
                     frame.observationTime = cacheFolder.observationTime;
                     frame.cacheFolderName = cacheFolder.cacheFolderName;
                     if (frame.imageUrl) {
-                        frame.imageUrl = resolveImageUrl(frame.imageUrl);
+                        frame.imageUrl = this.resolveImageUrl(frame.imageUrl, serviceUrl);
                     }
                     if (!frame.absoluteObservationTime && frame.observationTime && frame.minutesAgo !== undefined) {
                         const obsTime = new Date(frame.observationTime);
@@ -1286,11 +1268,11 @@ class RadarApiService {
             // Fetch latest metadata for display
             let metadata = {};
             try {
-                metadata = await hass.callWS({
-                    type: 'bom_local/get_radar_data',
-                    suburb,
-                    state
-                });
+                const metadataUrl = `${serviceUrl}/api/radar/${encodeURIComponent(suburb)}/${encodeURIComponent(state)}/metadata`;
+                const metadataResponse = await fetch(metadataUrl);
+                if (metadataResponse.ok) {
+                    metadata = await metadataResponse.json();
+                }
             }
             catch (err) {
                 console.debug('Could not fetch metadata:', err);
@@ -1298,15 +1280,15 @@ class RadarApiService {
             const newestCacheFolder = data.cacheFolders[data.cacheFolders.length - 1];
             const radarResponse = {
                 frames: allFrames,
-                lastUpdated: endTime,
-                observationTime: metadata.observationTime || (newestCacheFolder === null || newestCacheFolder === void 0 ? void 0 : newestCacheFolder.observationTime) || endTime,
-                forecastTime: metadata.forecastTime || endTime,
+                lastUpdated: new Date().toISOString(),
+                observationTime: metadata.observationTime || (newestCacheFolder === null || newestCacheFolder === void 0 ? void 0 : newestCacheFolder.observationTime) || new Date().toISOString(),
+                forecastTime: metadata.forecastTime || new Date().toISOString(),
                 weatherStation: metadata.weatherStation,
                 distance: metadata.distance,
                 cacheIsValid: (_a = metadata.cacheIsValid) !== null && _a !== void 0 ? _a : true,
-                cacheExpiresAt: metadata.cacheExpiresAt || endTime,
+                cacheExpiresAt: metadata.cacheExpiresAt || new Date().toISOString(),
                 isUpdating: metadata.isUpdating || false,
-                nextUpdateTime: metadata.nextUpdateTime || endTime,
+                nextUpdateTime: metadata.nextUpdateTime || new Date().toISOString(),
             };
             return radarResponse;
         }
@@ -1314,6 +1296,18 @@ class RadarApiService {
             this.handleFetchError(err, options);
             return null;
         }
+    }
+    /**
+     * Resolve relative image URLs to absolute URLs
+     */
+    resolveImageUrl(imageUrl, serviceUrl) {
+        if (imageUrl.startsWith('http')) {
+            return imageUrl; // Already absolute
+        }
+        if (imageUrl.startsWith('/')) {
+            return serviceUrl + imageUrl; // Absolute path
+        }
+        return serviceUrl + '/' + imageUrl; // Relative path
     }
     /**
      * Handles fetch errors and categorizes them appropriately
@@ -2927,16 +2921,17 @@ let BomLocalRadarCard = class BomLocalRadarCard extends i {
         };
     }
     /**
-     * Fetches radar data from the local service via HA integration
+     * Fetches radar data from the local service via direct HTTP requests
      * Supports both latest frames and historical timeseries
      */
     async fetchRadarData() {
-        const suburb = encodeURIComponent(this._config.suburb);
-        const state = encodeURIComponent(this._config.state);
+        const suburb = this._config.suburb;
+        const state = this._config.state;
         const timespan = this._config.timespan || 'latest';
+        const serviceUrl = this._config.service_url || 'http://localhost:8082';
         this.isLoading = true;
         const options = {
-            hass: this.hass,
+            serviceUrl,
             suburb,
             state,
             timespan: timespan !== 'latest' ? timespan : undefined,
