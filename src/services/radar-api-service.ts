@@ -20,7 +20,7 @@ export class RadarApiService {
     const { serviceUrl, suburb, state, onError } = options;
     
     try {
-      const url = `${serviceUrl}/api/radar/${encodeURIComponent(state.toLowerCase())}/${encodeURIComponent(suburb.toLowerCase())}`;
+      const url = `${serviceUrl}/api/radar/${encodeURIComponent(suburb.toLowerCase())}/${encodeURIComponent(state.toLowerCase())}`;
       const response = await fetch(url);
       
       if (!response.ok) {
@@ -70,7 +70,7 @@ export class RadarApiService {
     const { serviceUrl, suburb, state, timespan, customStartTime, customEndTime, onError } = options;
     
     try {
-      let url = `${serviceUrl}/api/radar/${encodeURIComponent(state.toLowerCase())}/${encodeURIComponent(suburb.toLowerCase())}/timeseries`;
+      let url = `${serviceUrl}/api/radar/${encodeURIComponent(suburb.toLowerCase())}/${encodeURIComponent(state.toLowerCase())}/timeseries`;
       const params = new URLSearchParams();
 
       if (timespan === 'custom') {
@@ -143,7 +143,7 @@ export class RadarApiService {
       // Fetch latest metadata for display
       let metadata: Partial<RadarResponse> = {};
       try {
-        const metadataUrl = `${serviceUrl}/api/radar/${encodeURIComponent(state.toLowerCase())}/${encodeURIComponent(suburb.toLowerCase())}`;
+        const metadataUrl = `${serviceUrl}/api/radar/${encodeURIComponent(suburb.toLowerCase())}/${encodeURIComponent(state.toLowerCase())}`;
         const metadataResponse = await fetch(metadataUrl);
         if (metadataResponse.ok) {
           metadata = await metadataResponse.json();
