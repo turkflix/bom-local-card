@@ -3458,3 +3458,4 @@ if (!customElements.get('bom-local-card')) {
 
 export { BomLocalRadarCard };
 //# sourceMappingURL=bom-local-card.js.map
+// FORCE HACS REFRESH v1.0.2 - Sat Feb 28 01:39:38 AM UTC 2026
